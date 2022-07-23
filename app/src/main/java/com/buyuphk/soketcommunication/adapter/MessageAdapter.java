@@ -51,18 +51,19 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     @Override
     public void onBindViewHolder(@NonNull MessageAdapter.ViewHolder holder, int position) {
         MessageEntity message = messageList.get(position);
-        if (message.getUserId().equals(NettyConstant.CLIENT_ID)) {
+        if (message.getSpeaker().equals(NettyConstant.CLIENT_ID)) {
             //right
             holder.getFrameLayoutLeft().setVisibility(View.GONE);
             holder.getFrameLayoutRight().setVisibility(View.VISIBLE);
             if (message.getMessageType() == 0) {
-                String userId = " :" + message.getUserId();
+                String userId = " :" + message.getSpeaker();
                 holder.getTextViewUserIdZero1().setText(userId);
-                holder.getTextViewMessage1().setText(message.getMessage());
+                String messageCompose = message.getMessage() + "(" + message.getCreateDateTime() + ")";
+                holder.getTextViewMessage1().setText(messageCompose);
                 holder.getLinearLayoutZero1().setVisibility(View.VISIBLE);
                 holder.getLinearLayoutOne1().setVisibility(View.GONE);
             } else {
-                String userId = " :" + message.getUserId();
+                String userId = " :" + message.getSpeaker();
                 holder.getTextViewUserIdOne1().setText(userId);
                 Glide.with(context).load(message.getMessage()).centerCrop().override(200, 150).into(holder.getImageViewPicture1());
                 holder.getLinearLayoutZero1().setVisibility(View.GONE);
@@ -73,13 +74,14 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             holder.getFrameLayoutRight().setVisibility(View.GONE);
             holder.getFrameLayoutLeft().setVisibility(View.VISIBLE);
             if (message.getMessageType() == 0) {
-                String userId = message.getUserId() + ": ";
+                String userId = message.getSpeaker() + ": ";
                 holder.getTextViewUserIdZero().setText(userId);
-                holder.getTextViewMessage().setText(message.getMessage());
+                String messageCompose = message.getMessage() + "(" + message.getCreateDateTime() + ")";
+                holder.getTextViewMessage().setText(messageCompose);
                 holder.getLinearLayoutZero().setVisibility(View.VISIBLE);
                 holder.getLinearLayoutOne().setVisibility(View.GONE);
             } else {
-                String userId = message.getUserId() + ": ";
+                String userId = message.getSpeaker() + ": ";
                 holder.getTextViewUserIdOne().setText(userId);
                 Glide.with(context).load(message.getMessage()).centerCrop().override(200, 150).into(holder.getImageViewPicture());
                 holder.getLinearLayoutZero().setVisibility(View.GONE);

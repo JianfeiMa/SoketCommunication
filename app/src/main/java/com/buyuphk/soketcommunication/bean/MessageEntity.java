@@ -9,8 +9,11 @@ package com.buyuphk.soketcommunication.bean;
  */
 public class MessageEntity {
     private String userId;
+    private String speaker;
     private String message;
     private int messageType;
+    private int isRead;
+    private String createDateTime;
 
     public String getUserId() {
         return userId;
@@ -18,6 +21,14 @@ public class MessageEntity {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getSpeaker() {
+        return speaker;
+    }
+
+    public void setSpeaker(String speaker) {
+        this.speaker = speaker;
     }
 
     public String getMessage() {
@@ -34,5 +45,21 @@ public class MessageEntity {
 
     public void setMessageType(int messageType) {
         this.messageType = messageType;
+    }
+
+    public int getIsRead() {
+        return isRead;
+    }
+
+    public void setIsRead(int isRead) {
+        this.isRead = isRead;
+    }
+
+    public String getCreateDateTime() {
+        return createDateTime;
+    }
+
+    public void setCreateDateTime(String createDateTime) {
+        this.createDateTime = createDateTime;
     }
 }

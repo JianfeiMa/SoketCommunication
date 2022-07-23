@@ -121,7 +121,7 @@ public class NodeClientHandler extends SimpleChannelInboundHandler<NetCommand> {
 		Intent intent = new Intent("customer_service_message");
 		intent.putExtra("message", msg.getData());
 		intent.putExtra("fromWho", msg.getCmdId());
-		if (msg.getCmdCode().equals("100")) {
+		if (msg.getCmdCode().equals("0")) {
 			intent.putExtra("messageType", 0);
 		} else {
 			intent.putExtra("messageType", 1);
@@ -221,7 +221,7 @@ public class NodeClientHandler extends SimpleChannelInboundHandler<NetCommand> {
 		NetCmdDataHeartDP.NetCmdDataHeartDto.Builder netCmdDataHeartDtoBuilder 
 			= NetCmdDataHeartDP.NetCmdDataHeartDto.newBuilder();
 		// 设置日期格式
-		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US);
 		// new Date()为获取当前系统时间
 		String nowTime = df.format(System.currentTimeMillis());
 		netCmdDataHeartDtoBuilder.setTime(nowTime);

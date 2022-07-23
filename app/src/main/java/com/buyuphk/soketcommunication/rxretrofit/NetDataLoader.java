@@ -2,6 +2,7 @@ package com.buyuphk.soketcommunication.rxretrofit;
 
 import android.content.Context;
 
+import com.buyuphk.soketcommunication.rxretrofit.responseresult.GetNewsResult;
 import com.buyuphk.soketcommunication.rxretrofit.responseresult.OnlineCustomerServiceResult;
 import com.buyuphk.soketcommunication.rxretrofit.responseresult.Result;
 
@@ -35,5 +36,14 @@ public class NetDataLoader extends ObjectLoader {
                 return result;
             }
         });
+    }
+
+    public Observable<GetNewsResult> getNewsMessage(int toWho) {
+        return observe(apiService.getNewsMessage(toWho).map(new Func1<GetNewsResult, GetNewsResult>() {
+            @Override
+            public GetNewsResult call(GetNewsResult getNewsResult) {
+                return getNewsResult;
+            }
+        }));
     }
 }

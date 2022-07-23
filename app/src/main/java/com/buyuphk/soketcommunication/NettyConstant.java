@@ -21,11 +21,11 @@ package com.buyuphk.soketcommunication;
  * @version 1.0
  */
 public final class NettyConstant {
-//    public static final String REMOTEIP = "129.226.119.115";
-    public static final String REMOTEIP = "192.168.1.33";
-//    public static final int PORT = 2345;
-    public static final int PORT = 2346;
+    public static final String REMOTEIP = "43.129.89.253";
+//    public static final String REMOTEIP = "192.168.1.33";
+    public static final int PORT = 2345;
+//    public static final int PORT = 2346;
     public static final int LOCAL_PORT = 12088;
     public static final String LOCALIP = "127.0.0.1";
-    public static final String CLIENT_ID = "00000002";
+    public static final String CLIENT_ID = "28";
 }

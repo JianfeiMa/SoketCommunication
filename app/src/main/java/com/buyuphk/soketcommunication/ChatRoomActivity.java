@@ -15,14 +15,14 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -30,6 +30,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
@@ -42,7 +43,8 @@ import com.buyuphk.soketcommunication.bean.MessageEntity;
 import com.buyuphk.soketcommunication.db.MySQLiteOpenDatabase;
 import com.buyuphk.soketcommunication.rxretrofit.NetDataLoader;
 import com.buyuphk.soketcommunication.rxretrofit.responseresult.Result;
-import com.buyuphk.soketcommunication.service.MyService;
+import com.mysun.misc.BASE64Decoder;
+import com.mysun.misc.BASE64Encoder;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -50,14 +52,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
-import com.mysun.misc.BASE64Decoder;
-import com.mysun.misc.BASE64Encoder;
 
 /**
  * Copyright (C), buyuphk物流中转站
@@ -79,16 +82,23 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
     private MessageAdapter messageAdapter;
     private String mImagePath = null;
     private KeyboardChangeListener keyboardChangeListener;
+    private String userId;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 //        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
         setContentView(R.layout.activity_chat_room);
+        Intent intent = getIntent();
+        userId = intent.getStringExtra("userId");
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.setTitle("我与" + userId + "的会话");
+        }
         keyboardChangeListener = new KeyboardChangeListener(this);
         keyboardChangeListener.setKeyBoardListener(this);
         myBroadcastReceiver = new MyBroadcastReceiver();
-        IntentFilter intentFilter = new IntentFilter("customer_service_message");
+        IntentFilter intentFilter = new IntentFilter("update_message");
         registerReceiver(myBroadcastReceiver, intentFilter);
         constraintLayout = findViewById(R.id.layout_main);
         bodyLayout = findViewById(R.id.layout_body);
@@ -103,18 +113,11 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
         Button button = findViewById(R.id.activity_chart_room_button);
         button.setOnClickListener(this);
         recyclerView = findViewById(R.id.recycler_view);
-        TextView textViewTopBar = findViewById(R.id.top_bar);
-        textViewTopBar.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onPictureSelected();
-            }
-        });
         init();
     }
 
     private void init() {
-        msgList = readMessageList();
+        msgList = readMessageList(userId);
         recyclerView.setHasFixedSize(true);
         messageAdapter = new MessageAdapter(this, msgList);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
@@ -122,8 +125,6 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
         recyclerView.setLayoutManager(linearLayoutManager);
         recyclerView.setAdapter(messageAdapter);
         scrollToBottom();
-        /** 在服务中开始建立netty的socket链接 */
-        startService(new Intent(this, MyService.class));
     }
 
     private void scrollToBottom() {
@@ -206,7 +207,7 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
         String result = base64Encoder.encode(bytes);
 
         NetDataLoader netDataLoader = new NetDataLoader(this);
-        netDataLoader.sendMessage(NettyConstant.CLIENT_ID,"13138742085", result, 1)
+        netDataLoader.sendMessage(NettyConstant.CLIENT_ID, userId, result, 1)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Observer<Result>() {
@@ -231,9 +232,10 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
 //        String saveMessage = NettyConstant.CLIENT_ID + ":发出图片" + mImagePath;
         MessageEntity messageEntity = new MessageEntity();
         messageEntity.setUserId(NettyConstant.CLIENT_ID);
+        messageEntity.setSpeaker(NettyConstant.CLIENT_ID);
         messageEntity.setMessage(mImagePath);
         messageEntity.setMessageType(1);
-        saveMessage(NettyConstant.CLIENT_ID, mImagePath, 1);
+        saveMessage(userId, NettyConstant.CLIENT_ID, mImagePath, 1, 1);
         msgList.add(messageEntity);
         messageAdapter.setNewData(msgList);
         scrollToBottom();
@@ -264,7 +266,7 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
         String message = editText.getText().toString();
         if (!message.equals("")) {
             NetDataLoader netDataLoader = new NetDataLoader(this);
-            netDataLoader.sendMessage(NettyConstant.CLIENT_ID,"13138742085", message, 0)
+            netDataLoader.sendMessage(NettyConstant.CLIENT_ID, userId, message, 0)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(new Observer<Result>() {
@@ -289,11 +291,15 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
             //String saveMessage = NettyConstant.CLIENT_ID + ":" + message;
             MessageEntity messageEntity = new MessageEntity();
             messageEntity.setUserId(NettyConstant.CLIENT_ID);
+            messageEntity.setSpeaker(NettyConstant.CLIENT_ID);
             messageEntity.setMessage(message);
             messageEntity.setMessageType(0);
-            saveMessage(NettyConstant.CLIENT_ID, message, 0);
+            DateFormat dateFormat = new SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US);
+            messageEntity.setCreateDateTime(dateFormat.format(new Date()));
+            saveMessage(userId, NettyConstant.CLIENT_ID, message, 0, 1);
             msgList.add(messageEntity);
             messageAdapter.setNewData(msgList);
+            editText.setText("");
             scrollToBottom();
         }
     }
@@ -308,14 +314,17 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
         @Override
         public void onReceive(Context context, Intent intent) {
             String fromWho = intent.getStringExtra("fromWho");
-            byte[] data = intent.getByteArrayExtra("message");
-            String message = new String(data);
+            String message = intent.getStringExtra("message");
+            DateFormat dateFormat = new SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US);
+            String createDateTime = dateFormat.format(new Date());
             if (intent.getIntExtra("messageType", 0) == 0) {
                 MessageEntity messageEntity = new MessageEntity();
                 messageEntity.setUserId(fromWho);
+                messageEntity.setSpeaker(fromWho);
                 messageEntity.setMessage(message);
                 messageEntity.setMessageType(0);
-                saveMessage(fromWho, message, 0);
+                messageEntity.setCreateDateTime(createDateTime);
+                //saveMessage(fromWho, fromWho, message, 0);
                 msgList.add(messageEntity);
                 messageAdapter.setNewData(msgList);
                 scrollToBottom();
@@ -338,11 +347,13 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
                     out.flush();
                     out.close();
                     //String pictureMessage = fromWho + ":发来图片" + imagePath;
-                    saveMessage(fromWho, imagePath, 1);
+                    //saveMessage(fromWho, fromWho, imagePath, 1);
                     MessageEntity messageEntity = new MessageEntity();
                     messageEntity.setUserId(fromWho);
+                    messageEntity.setSpeaker(fromWho);
                     messageEntity.setMessage(imagePath);
                     messageEntity.setMessageType(1);
+                    messageEntity.setCreateDateTime(createDateTime);
                     msgList.add(messageEntity);
                     messageAdapter.setNewData(msgList);
                     scrollToBottom();
@@ -353,35 +364,84 @@ public class ChatRoomActivity extends AppCompatActivity implements View.OnClickL
         }
     }
 
-    private void saveMessage(String userId, String message, int messageType) {
+    private void saveMessage(String userId, String speaker, String message, int messageType, int isRead) {
         MyApplication myApplication = (MyApplication) getApplication();
         MySQLiteOpenDatabase mySQLiteOpenDatabase = myApplication.getMySQLiteOpenDatabase();
         SQLiteDatabase sqLiteDatabase = mySQLiteOpenDatabase.getWritableDatabase();
         ContentValues contentValues = new ContentValues();
         contentValues.put("user_id", userId);
+        contentValues.put("speaker", speaker);
         contentValues.put("message", message);
         contentValues.put("message_type", messageType);
+        contentValues.put("is_read", isRead);
+        contentValues.put("create_date_time", System.currentTimeMillis());
         long result = sqLiteDatabase.insert("message", null, contentValues);
         Log.d("debug", String.valueOf(result));
     }
 
-    public List<MessageEntity> readMessageList() {
+    public List<MessageEntity> readMessageList(String userIdArgument) {
+        String[] selectionArgs = new String[1];
+        selectionArgs[0] = userIdArgument;
         List<MessageEntity> result = new ArrayList<>();
         MyApplication myApplication = (MyApplication) getApplication();
         MySQLiteOpenDatabase mySQLiteOpenDatabase = myApplication.getMySQLiteOpenDatabase();
         SQLiteDatabase sqLiteDatabase = mySQLiteOpenDatabase.getReadableDatabase();
-        Cursor cursor = sqLiteDatabase.rawQuery("select * from message", null);
+        Cursor cursor = sqLiteDatabase.rawQuery("select * from message where user_id = ?", selectionArgs);
+        DateFormat dateFormat = new SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US);
+        List<String> stringList = new ArrayList<>();
         while (cursor.moveToNext()) {
+            int id = cursor.getInt(cursor.getColumnIndex("id"));
             String userId = cursor.getString(cursor.getColumnIndex("user_id"));
+            String speaker = cursor.getString(cursor.getColumnIndex("speaker"));
             String message = cursor.getString(cursor.getColumnIndex("message"));
             int messageType = cursor.getInt(cursor.getColumnIndex("message_type"));
+            int isRead = cursor.getInt(cursor.getColumnIndex("is_read"));
+            long createDateTime = cursor.getLong(cursor.getColumnIndex("create_date_time"));
             MessageEntity messageEntity = new MessageEntity();
             messageEntity.setUserId(userId);
+            messageEntity.setSpeaker(speaker);
             messageEntity.setMessage(message);
             messageEntity.setMessageType(messageType);
+            messageEntity.setIsRead(isRead);
+            messageEntity.setCreateDateTime(dateFormat.format(new Date(createDateTime)));
             result.add(messageEntity);
+            if (isRead == 0) {
+                stringList.add(String.valueOf(id));
+            }
+        }
+        if (stringList.size() > 0) {
+            ContentValues contentValues = new ContentValues();
+            int isRead = 1;
+            contentValues.put("is_read", isRead);
+            String[] whereArgs = new String[stringList.size()];
+            StringBuilder whereClause = new StringBuilder("id in (");
+            for (int i = 0; i < stringList.size(); i++) {
+                whereClause.append("? ,");
+                whereArgs[i] = stringList.get(i);
+            }
+            whereClause.replace(whereClause.length() - 1, whereClause.length(), ")");
+            int updateResult = sqLiteDatabase.update("message", contentValues, whereClause.toString(), whereArgs);
+            Log.d("debug", "查询出来表示已经看过消息，然后反转更新状态->" + updateResult);
         }
         cursor.close();
         return result;
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater menuInflater = getMenuInflater();
+        menuInflater.inflate(R.menu.menu_chat_room, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.menu_chat_room_picture) {
+            Toast.makeText(this, "coding", Toast.LENGTH_SHORT).show();
+//            onPictureSelected();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
 }

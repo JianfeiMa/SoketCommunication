@@ -29,12 +29,13 @@
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
                 <Button
                     android:id="@+id/activity_chart_room_button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="send"
-                    android:layout_alignParentRight="true"/>
+                    android:layout_alignParentRight="true"
+                    android:text="send" />
                 <EditText
                     android:id="@+id/activity_chart_room_edit_text"
                     android:layout_width="match_parent"
@@ -44,15 +45,16 @@
         </LinearLayout>
     </LinearLayout>
 
-    <TextView
+    <RelativeLayout
         android:id="@+id/top_bar"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="#00bfcf"
-        android:gravity="center"
-        android:textStyle="bold"
-        android:text="TopBar"
-        android:textColor="#000000"
-        android:textSize="18sp"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_height="wrap_content"
+        android:background="#333333"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent">
+        <View
+            android:layout_width="10dp"
+            android:layout_height="10dp" />
+    </RelativeLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

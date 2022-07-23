@@ -20,7 +20,8 @@ public class MySQLiteOpenDatabase extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("create table message (id integer primary key autoincrement, user_id varchar(200), message varchar(500), message_type integer)");
+        db.execSQL("create table user(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id VARCHAR(500))");
+        db.execSQL("create table message (id integer primary key autoincrement, user_id varchar(200), speaker VARCHAR(30), message varchar(500), message_type integer, is_read tinyint default 0, create_date_time timestamp default(datetime('now', 'localtime')))");
     }
 
     @Override
