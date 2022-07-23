@@ -10,6 +10,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Message;
 import android.os.Vibrator;
 import android.text.InputType;
 import android.util.Log;
@@ -18,6 +19,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -38,10 +41,12 @@ import com.buyuphk.soketcommunication.rxretrofit.responseresult.ChatRecordDO;
 import com.buyuphk.soketcommunication.rxretrofit.responseresult.GetNewsResult;
 import com.buyuphk.soketcommunication.service.MyService;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TimerTask;
 import java.util.TreeSet;
 
 import rx.Observer;
@@ -59,11 +64,19 @@ public class ChatListActivity extends AppCompatActivity implements MyItemClickLi
     private MyBroadcastReceiver myBroadcastReceiver;
     private String userId;
     private EditText editText;
+    private java.util.Timer timer;
+    private MyHandler myHandler;
+
+    private TextView textView;
+    private TextView textViewAlive;
+    private MyBroadcastReceiverForStatus myBroadcastReceiverForStatus;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat_list);
+        java.lang.ref.WeakReference<ChatListActivity> chatListActivityWeakReference = new WeakReference<ChatListActivity>(this);
+        myHandler = new MyHandler(chatListActivityWeakReference);
 
         /** 在服务中开始建立netty的socket链接 */
         startService(new Intent(this, MyService.class));
@@ -71,14 +84,24 @@ public class ChatListActivity extends AppCompatActivity implements MyItemClickLi
         IntentFilter intentFilter = new IntentFilter("update_message");
         registerReceiver(myBroadcastReceiver, intentFilter);
 
+        myBroadcastReceiverForStatus = new MyBroadcastReceiverForStatus();
+        IntentFilter intentFilterForStatus = new IntentFilter("jianfei");
+        registerReceiver(myBroadcastReceiverForStatus, intentFilterForStatus);
+
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setTitle("我的会话列表");
+            if (getNewestLogTime() != null) {
+                actionBar.setSubtitle(getNewestLogTime());
+            }
         }
 
         swipeRefreshLayout = findViewById(R.id.activity_user_list_swipe_refresh_layout);
+        textView = findViewById(R.id.activity_main_text_view);
+        textViewAlive = findViewById(R.id.activity_main_alive);
         swipeRefreshLayout.setOnRefreshListener(this);
         RecyclerView recyclerView = findViewById(R.id.activity_login_recycler_view);
+
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         recyclerView.setLayoutManager(linearLayoutManager);
         List<UserEntity> userList = readUserList();
@@ -86,6 +109,46 @@ public class ChatListActivity extends AppCompatActivity implements MyItemClickLi
         userAdapter.setMyItemClickListener(this);
         recyclerView.setAdapter(userAdapter);
         getNewsMessage();
+        timer = new java.util.Timer("myTimer", true);
+        long period = 1000 * 10;
+        timer.schedule(new MyTimerTask(), 1000L, period);
+    }
+
+    public void refresh(String result) {
+        android.util.Log.d("debug", "result->" + result);
+        String newestLogTime = getNewestLogTime();
+        if (newestLogTime != null) {
+            ActionBar actionBar = getSupportActionBar();
+            if (actionBar != null) {
+                actionBar.setSubtitle(newestLogTime);
+            }
+        }
+    }
+
+    protected class MyTimerTask extends java.util.TimerTask {
+
+        @Override
+        public void run() {
+            android.os.Message message = myHandler.obtainMessage();
+            message.obj = "refresh";
+            myHandler.sendMessage(message);
+        }
+    }
+
+    public static class MyHandler extends android.os.Handler {
+        private final java.lang.ref.WeakReference<ChatListActivity> chatListActivityWeakReference;
+
+        public MyHandler(WeakReference<ChatListActivity> chatListActivityWeakReference) {
+            this.chatListActivityWeakReference = chatListActivityWeakReference;
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            if (chatListActivityWeakReference != null && chatListActivityWeakReference.get() != null) {
+                chatListActivityWeakReference.get().refresh((String) msg.obj);
+            }
+        }
     }
 
     private void myAlarm() {
@@ -223,7 +286,11 @@ public class ChatListActivity extends AppCompatActivity implements MyItemClickLi
             AlertDialog alertDialog = builder.create();
             alertDialog.show();
         } else if (item.getItemId() == R.id.menu_user_list_alarm) {
-            myAlarm();
+//            myAlarm();
+            android.content.ComponentName componentName = new android.content.ComponentName("com.buyuphk.soketcommunication", "com.buyuphk.soketcommunication.AboutActivity");
+            android.content.Intent intent = new android.content.Intent();
+            intent.setComponent(componentName);
+            startActivity(intent);
         }
         return super.onOptionsItemSelected(item);
     }
@@ -232,6 +299,8 @@ public class ChatListActivity extends AppCompatActivity implements MyItemClickLi
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(myBroadcastReceiver);
+        unregisterReceiver(myBroadcastReceiverForStatus);
+        timer.cancel();
     }
 
     private class MyBroadcastReceiver extends BroadcastReceiver {
@@ -349,5 +418,50 @@ public class ChatListActivity extends AppCompatActivity implements MyItemClickLi
             onRefresh();
         }
         return super.onContextItemSelected(item);
+    }
+
+    private String getNewestLogTime() {
+        String result = null;
+        MyApplication myApplication = (MyApplication) getApplication();
+        MySQLiteOpenDatabase mySQLiteOpenDatabase = myApplication.getMySQLiteOpenDatabase();
+        android.database.sqlite.SQLiteDatabase sqLiteDatabase = mySQLiteOpenDatabase.getReadableDatabase();
+        android.database.Cursor cursor = sqLiteDatabase.rawQuery("select * from log order by id desc limit 1 offset 0", null);
+        while (cursor.moveToNext()) {
+            result = cursor.getString(cursor.getColumnIndex("heart_time"));
+        }
+        cursor.close();
+        return result;
+    }
+
+    private class MyBroadcastReceiverForStatus extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            byte defaultType = 0;
+            byte type = intent.getByteExtra("type", defaultType);
+            if (type == 0) {
+                boolean isActive = intent.getBooleanExtra("isActive", false);
+                if (isActive) {
+                    textView.setText("在线");
+                    textView.setBackgroundResource(R.drawable.my_shape_positive);
+                } else {
+                    textView.setText("离线");
+                    textView.setBackgroundResource(R.drawable.my_shape_negative);
+                }
+            } else if (type == 1) {
+                byte[] data = intent.getByteArrayExtra("message");
+                String message0 = new String(data);
+                Log.d("debug", "message0:" + message0);
+                //String message = intent.getStringExtra("message");
+            } else if (type == 2) {
+                String times = textViewAlive.getText().toString();
+                int iTimes = Integer.valueOf(times);
+                iTimes ++;
+                textViewAlive.setText(String.valueOf(iTimes));
+
+                textView.setText("在线");
+                textView.setBackgroundResource(R.drawable.my_shape_positive);
+            }
+        }
     }
 }

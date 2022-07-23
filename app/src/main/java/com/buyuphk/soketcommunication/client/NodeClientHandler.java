@@ -7,7 +7,9 @@ import android.util.Log;
 import java.text.SimpleDateFormat;
 
 
+import com.buyuphk.soketcommunication.MyApplication;
 import com.buyuphk.soketcommunication.NettyConstant;
+import com.buyuphk.soketcommunication.db.MySQLiteOpenDatabase;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.buyuphk.soketcommunication.codec.DefConf;
 import com.buyuphk.soketcommunication.codec.NetCmdDataHeartDP;
@@ -153,7 +155,16 @@ public class NodeClientHandler extends SimpleChannelInboundHandler<NetCommand> {
     			String heartTime = heartDtoParam.getTime();
     			
     			//log.debug("处理心跳响应信息处理:"+context.channel().remoteAddress() + heartTime);
-    			
+				/**
+				 * 2022-07-23 14:06:08 编写把心跳信息写入本地SQLite数据库
+				 */
+				MySQLiteOpenDatabase mySQLiteOpenDatabase = MyApplication.instance.getMySQLiteOpenDatabase();
+				android.database.sqlite.SQLiteDatabase sqLiteDatabase = mySQLiteOpenDatabase.getWritableDatabase();
+				android.content.ContentValues contentValues = new android.content.ContentValues(2);
+				contentValues.put("log_content", heartDtoParam.toString());
+				contentValues.put("heart_time", heartTime);
+				long result = sqLiteDatabase.insert("log", null, contentValues);
+				android.util.Log.d("debug", "打印插入心跳信息到本地数据库返回的结果->" + result);
     		} catch (InvalidProtocolBufferException e) {
     			System.out.println("E00000001001-execute 反序列失败：" + e.getMessage());
 

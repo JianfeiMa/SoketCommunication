@@ -2,5 +2,5 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/menu_user_list_status" android:title="添加会话" app:showAsAction="always"/>
-    <item android:id="@+id/menu_user_list_alarm" android:title="设置闹钟" app:showAsAction="never"/>
+    <item android:id="@+id/menu_user_list_alarm" android:title="日志" app:showAsAction="never"/>
 </menu>
